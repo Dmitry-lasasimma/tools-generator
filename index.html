@@ -1,0 +1,573 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Invitation Card Generator</title>
+<meta name="robots" content="noindex">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Pinyon+Script&family=Cinzel:wght@500;600&family=Cormorant+Garamond:wght@500;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jszip/3.10.1/jszip.min.js"></script>
+<style>
+  :root {
+    --ivory: #fbf7ef;
+    --panel: #fffdf8;
+    --gold: #b4934a;
+    --gold-dark: #8f7237;
+    --gold-light: #d8c393;
+    --ink: #3a3327;
+    --ink-soft: #6b6250;
+    --hairline: #e9dfc8;
+    --warn-bg: #fdf1e2;
+    --warn: #9a5a12;
+    color-scheme: light;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0;
+    background: var(--ivory);
+    color: var(--ink);
+    font-family: 'Cormorant Garamond', Georgia, serif;
+    font-weight: 500;
+    font-size: 17px;
+    font-variant-numeric: lining-nums;
+  }
+  header {
+    padding: 28px 24px 8px;
+    text-align: center;
+  }
+  header .script {
+    font-family: 'Pinyon Script', cursive;
+    font-size: 40px;
+    color: var(--gold-dark);
+    margin: 0;
+    line-height: 1.2;
+  }
+  header p { margin: 4px 0 0; color: var(--ink-soft); }
+
+  .wrap {
+    display: grid;
+    grid-template-columns: minmax(280px, 380px) 1fr;
+    gap: 24px;
+    max-width: 1240px;
+    margin: 0 auto;
+    padding: 20px 24px 60px;
+  }
+  @media (max-width: 820px) { .wrap { grid-template-columns: 1fr; padding: 16px; } }
+
+  .panel {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 20px;
+    align-self: start;
+    position: sticky;
+    top: 16px;
+  }
+  @media (max-width: 820px) { .panel { position: static; } }
+
+  .step { margin-bottom: 22px; }
+  .step h2 {
+    margin: 0 0 8px;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    color: var(--gold-dark);
+  }
+  .step h2 span {
+    display: inline-flex;
+    width: 22px; height: 22px;
+    align-items: center; justify-content: center;
+    border: 1px solid var(--gold);
+    border-radius: 50%;
+    margin-right: 8px;
+    font-size: 12px;
+    letter-spacing: 0;
+  }
+  .help { margin: 6px 0 0; font-size: 15px; color: var(--ink-soft); line-height: 1.4; }
+  input[type=url], textarea {
+    width: 100%;
+    font: inherit;
+    font-size: 16px;
+    color: var(--ink);
+    background: #fff;
+    border: 1px solid var(--gold-light);
+    border-radius: 6px;
+    padding: 9px 11px;
+  }
+  textarea { min-height: 220px; resize: vertical; line-height: 1.5; }
+  input:focus, textarea:focus { outline: 2px solid rgba(180, 147, 74, 0.4); outline-offset: 1px; }
+  .warn {
+    display: none;
+    margin-top: 8px;
+    padding: 8px 10px;
+    border-radius: 6px;
+    background: var(--warn-bg);
+    color: var(--warn);
+    font-size: 15px;
+    line-height: 1.35;
+  }
+  .warn.show { display: block; }
+
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; }
+  button, .filebtn {
+    font: inherit;
+    font-size: 14px;
+    font-weight: 700;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    padding: 10px 16px;
+    border-radius: 999px;
+    border: 1px solid var(--gold);
+    background: #fff;
+    color: var(--gold-dark);
+    cursor: pointer;
+  }
+  button.primary { background: linear-gradient(180deg, #c8a95f, #a9873f); color: #fffdf6; border-color: #a9873f; }
+  button:disabled { opacity: 0.45; cursor: not-allowed; }
+  .filebtn input { display: none; }
+  .status { margin-top: 10px; font-size: 15px; color: var(--ink-soft); min-height: 1.4em; }
+
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(210px, 1fr));
+    gap: 18px;
+    align-content: start;
+  }
+  .empty {
+    grid-column: 1 / -1;
+    padding: 60px 20px;
+    text-align: center;
+    color: var(--ink-soft);
+    border: 1px dashed var(--gold-light);
+    border-radius: 10px;
+  }
+  .item {
+    background: var(--panel);
+    border: 1px solid var(--hairline);
+    border-radius: 10px;
+    padding: 10px;
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+  }
+  .item img {
+    width: 100%;
+    aspect-ratio: 1080 / 1350;
+    border-radius: 4px;
+    display: block;
+    cursor: zoom-in;
+    box-shadow: 0 4px 12px -6px rgba(60, 40, 10, 0.35);
+    background: #f3ecdf;
+  }
+  .item .nm { font-weight: 600; font-size: 16px; line-height: 1.25; }
+  .item .acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .item .acts button, .item .acts a {
+    font-size: 11px;
+    padding: 6px 10px;
+    letter-spacing: 0.1em;
+  }
+  .item .acts a {
+    font-family: inherit;
+    font-weight: 700;
+    text-transform: uppercase;
+    border: 1px solid var(--gold-light);
+    border-radius: 999px;
+    color: var(--gold-dark);
+    text-decoration: none;
+  }
+
+  dialog {
+    border: 0;
+    padding: 0;
+    background: transparent;
+    max-width: min(92vw, 560px);
+  }
+  dialog::backdrop { background: rgba(40, 32, 20, 0.7); }
+  dialog img { width: 100%; display: block; border-radius: 6px; }
+  dialog form { text-align: center; margin-top: 10px; }
+
+body { background:radial-gradient(ellipse at top left,#e6edf9,transparent 55%),#fbf7ef; }
+header { border-bottom:1px solid #d8c393;padding-bottom:20px; }
+header::after { content:"CORNFLOWER · CHAMPAGNE · GOLD";display:block;margin-top:15px;font-size:11px;letter-spacing:.22em;color:#4669a6; }
+.panel { border-top:3px solid #7899d8;box-shadow:0 12px 45px #263a6010; }
+button:focus-visible,input:focus-visible,textarea:focus-visible { outline:2px solid #426bc1;outline-offset:3px; }
+</style>
+</head>
+<body>
+  <header>
+    <p class="script">Invitation Card Generator</p>
+    <p>Woraphob &amp; Christina · one personal QR card per guest</p>
+  </header>
+
+  <div class="wrap">
+    <section class="panel" aria-label="Settings">
+      <div class="step">
+        <h2><span>1</span>Invitation address</h2>
+        <input type="url" id="baseUrl" spellcheck="false" autocomplete="off">
+        <p class="help">The web address of the envelope page. Every QR code points here with the guest's name added.</p>
+        <p class="warn" id="urlWarn">This is still the placeholder address. QR codes made now won't work for guests — set the real GitHub Pages address first.</p>
+      </div>
+
+      <div class="step">
+        <h2><span>2</span>Guest list</h2>
+        <textarea id="guests" spellcheck="false" placeholder="One guest per line, exactly as it should be printed, e.g.&#10;Mr. &amp; Mrs. Somchai Phommavong&#10;Olga Lyakhovich&#10;The Kingkeo Family"></textarea>
+        <div class="row" style="margin-top:8px">
+          <label class="filebtn">Import CSV / TXT<input type="file" id="file" accept=".csv,.txt,text/csv,text/plain"></label>
+          <span class="help" id="countNote" style="margin:0"></span>
+        </div>
+        <p class="help">From Excel: copy the name column and paste it here, or save as CSV and import. Columns on the same row (e.g. title + name) are joined with a space.</p>
+      </div>
+
+      <div class="step" style="margin-bottom:0">
+        <h2><span>3</span>Create</h2>
+        <div class="row">
+          <button class="primary" id="genBtn" type="button">Preview cards</button>
+          <button id="zipBtn" type="button" disabled>Download all (ZIP)</button>
+        </div>
+        <p class="status" id="status" aria-live="polite"></p>
+      </div>
+    </section>
+
+    <section class="grid" id="grid" aria-label="Card previews">
+      <div class="empty">Add guests on the left, then press <b>Preview cards</b>.</div>
+    </section>
+  </div>
+
+  <dialog id="zoom">
+    <img id="zoomImg" alt="">
+    <form method="dialog"><button type="submit">Close</button></form>
+  </dialog>
+
+<script>
+(function () {
+  var W = 1080, H = 1350;
+  var PLACEHOLDER = 'https://YOUR-USERNAME.github.io/YOUR-REPO/';
+  var SITE_URL = 'https://dmitry-lasasimma.github.io/woraphob-christina/';
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ---------- settings persistence (per-browser convenience only) ---------- */
+  function load(key, fallback) { try { return localStorage.getItem(key) || fallback; } catch (e) { return fallback; } }
+  function save(key, val) { try { localStorage.setItem(key, val); } catch (e) {} }
+
+  var baseInput = $('baseUrl'), guestsInput = $('guests');
+  baseInput.value = load('wc.baseUrl', SITE_URL);
+  if (/YOUR-USERNAME|localhost/.test(baseInput.value)) baseInput.value = SITE_URL;
+  guestsInput.value = load('wc.guests', '');
+  function checkUrl() {
+    $('urlWarn').classList.toggle('show', /YOUR-USERNAME|YOUR-REPO/.test(baseInput.value));
+  }
+  baseInput.addEventListener('input', function () { save('wc.baseUrl', baseInput.value.trim()); checkUrl(); });
+  guestsInput.addEventListener('input', function () { save('wc.guests', guestsInput.value); updateCount(); });
+  checkUrl();
+
+  /* ---------- guest list parsing ---------- */
+  function parseCSV(text) {
+    var rows = [], row = [], cell = '', q = false;
+    for (var i = 0; i < text.length; i++) {
+      var c = text[i];
+      if (q) {
+        if (c === '"' && text[i + 1] === '"') { cell += '"'; i++; }
+        else if (c === '"') q = false;
+        else cell += c;
+      } else if (c === '"') q = true;
+      else if (c === ',' || c === ';' || c === '\t') { row.push(cell); cell = ''; }
+      else if (c === '\n' || c === '\r') {
+        if (c === '\r' && text[i + 1] === '\n') i++;
+        row.push(cell); rows.push(row); row = []; cell = '';
+      } else cell += c;
+    }
+    row.push(cell); rows.push(row);
+    return rows;
+  }
+  function joinRow(cells) {
+    return cells.map(function (s) { return s.trim(); }).filter(Boolean).join(' ').replace(/\s+/g, ' ');
+  }
+  function guestList() {
+    var seen = {};
+    return guestsInput.value.split(/\r?\n/)
+      .map(function (line) { return joinRow(line.split('\t')); })
+      .filter(function (n) {
+        if (!n) return false;
+        var k = n.toLowerCase();
+        if (seen[k]) return false;
+        return (seen[k] = true);
+      });
+  }
+  function updateCount() {
+    var n = guestList().length;
+    $('countNote').textContent = n ? n + ' guest' + (n > 1 ? 's' : '') : '';
+  }
+  updateCount();
+
+  $('file').addEventListener('change', function (e) {
+    var f = e.target.files[0];
+    if (!f) return;
+    f.text().then(function (text) {
+      var rows = parseCSV(text.replace(/^﻿/, ''));
+      var names = rows.map(joinRow).filter(Boolean);
+      if (names.length && /^(name|names|guest|guests|title|full name)\b/i.test(names[0])) names.shift();
+      guestsInput.value = (guestsInput.value.trim() ? guestsInput.value.trim() + '\n' : '') + names.join('\n');
+      save('wc.guests', guestsInput.value);
+      updateCount();
+      e.target.value = '';
+    });
+  });
+
+  /* ---------- links ---------- */
+  function b64url(str) {
+    var bytes = new TextEncoder().encode(str), bin = '';
+    for (var i = 0; i < bytes.length; i++) bin += String.fromCharCode(bytes[i]);
+    return btoa(bin).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+  }
+  function linkFor(name) {
+    var base = baseInput.value.trim() || PLACEHOLDER;
+    if (!/\.html?$/i.test(base) && !/\/$/.test(base)) base += '/';
+    return base + '?g=' + b64url(name);
+  }
+  function slug(name) {
+    return name.normalize('NFKD').replace(/[̀-ͯ]/g, '')
+      .replace(/&/g, 'and').replace(/[^A-Za-z0-9຀-໿Ѐ-ӿ]+/g, '-')
+      .replace(/^-+|-+$/g, '').slice(0, 60) || 'guest';
+  }
+
+  /* ---------- card artwork (static layer, rendered once) ---------- */
+  var GOLD_STOPS = '<stop offset="0" stop-color="#e6c877"/><stop offset=".22" stop-color="#b38a36"/><stop offset=".42" stop-color="#ecd28a"/><stop offset=".62" stop-color="#a47c2e"/><stop offset=".82" stop-color="#d2ad5c"/><stop offset="1" stop-color="#86652a"/>';
+  var QR = { x: 300, y: 540, size: 480 };   // frame box
+
+  function artworkSVG() {
+    var petal = 'M0 0 C-17 -20 -19 -58 0 -92 C19 -58 17 -20 0 0 Z';
+    return '<svg xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink" width="' + W + '" height="' + H + '" viewBox="0 0 ' + W + ' ' + H + '">' +
+      '<defs>' +
+        '<linearGradient id="g" x1="0" y1="0" x2="1" y2="1">' + GOLD_STOPS + '</linearGradient>' +
+        '<linearGradient id="gl" x1="0" y1="0" x2="1" y2="0">' + GOLD_STOPS + '</linearGradient>' +
+        '<linearGradient id="pf" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#f5f7fc"/><stop offset=".45" stop-color="#cbd9f4"/><stop offset=".85" stop-color="#799cdd"/><stop offset="1" stop-color="#4668b4"/></linearGradient>' +
+        '<linearGradient id="pb" x1="0" y1="1" x2="0" y2="0"><stop offset="0" stop-color="#e8edf8"/><stop offset=".6" stop-color="#9db6e4"/><stop offset="1" stop-color="#5676bb"/></linearGradient>' +
+        '<radialGradient id="w1" cx=".1" cy=".05" r=".6"><stop offset="0" stop-color="#c4d4ef" stop-opacity=".45"/><stop offset="1" stop-color="#c4d4ef" stop-opacity="0"/></radialGradient>' +
+        '<radialGradient id="w2" cx=".95" cy=".95" r=".6"><stop offset="0" stop-color="#c4d4ef" stop-opacity=".45"/><stop offset="1" stop-color="#c4d4ef" stop-opacity="0"/></radialGradient>' +
+        '<filter id="m"><feTurbulence type="fractalNoise" baseFrequency=".0035 .009" numOctaves="5" seed="11"/><feColorMatrix values="0 0 0 0 .55 0 0 0 0 .68 0 0 0 0 .86 0 0 0 -3.2 1.62"/></filter>' +
+        '<path id="pt" d="' + petal + '"/>' +
+        "<g id=\"cornflower\"><path d=\"M0 5Q12 -28 0 -55 M5 -14Q-30 -38 -36 -32Q-25 -12 5 -14\" fill=\"#8b9a7b\" stroke=\"#71836c\"/><g transform=\"translate(0 -60)\"><g><path transform=\"rotate(0.0) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4269c2\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(0.0) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(25.714285714285715) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#658cde\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(25.714285714285715) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(51.42857142857143) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#809ee6\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(51.42857142857143) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(77.14285714285714) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4e71cb\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(77.14285714285714) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(102.85714285714286) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4269c2\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(102.85714285714286) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(128.57142857142858) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#658cde\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(128.57142857142858) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(154.28571428571428) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#809ee6\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(154.28571428571428) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(180.0) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4e71cb\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(180.0) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(205.71428571428572) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4269c2\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(205.71428571428572) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(231.42857142857142) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#658cde\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(231.42857142857142) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(257.14285714285717) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#809ee6\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(257.14285714285717) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(282.85714285714283) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4e71cb\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(282.85714285714283) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(308.57142857142856) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4269c2\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(308.57142857142856) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(334.2857142857143) scale(1)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#658cde\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(334.2857142857143) scale(1)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(11.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4269c2\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(11.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(41.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#658cde\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(41.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(71.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#809ee6\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(71.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(101.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4e71cb\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(101.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(131.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4269c2\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(131.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(161.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#658cde\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(161.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(191.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#809ee6\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(191.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(221.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4e71cb\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(221.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(251.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4269c2\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(251.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(281.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#658cde\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(281.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(311.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#809ee6\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(311.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><path transform=\"rotate(341.0) scale(0.71)\" d=\"M-5 -8 Q-13 -23 -12 -34 L-19 -47 L-10 -43 L-8 -54 L-2 -46 L3 -57 L7 -45 L15 -49 L11 -36 Q13 -21 5 -8Z\" fill=\"#4e71cb\" stroke=\"#3355a1\" stroke-width=\".45\"/><path transform=\"rotate(341.0) scale(0.71)\" d=\"M0 -12 L-3 -42 M0 -18 L7 -39\" stroke=\"#c3d3f6\" stroke-width=\".65\" fill=\"none\" opacity=\".65\"/><circle r=\"12\" fill=\"#303762\"/><circle cx=\"2.00\" cy=\"0.00\" r=\"1\" fill=\"#a5afe3\"/><circle cx=\"-2.95\" cy=\"2.70\" r=\"1\" fill=\"#6978b6\"/><circle cx=\"0.52\" cy=\"-5.98\" r=\"1\" fill=\"#d5c9a0\"/><circle cx=\"4.87\" cy=\"6.35\" r=\"1\" fill=\"#a5afe3\"/><circle cx=\"-9.85\" cy=\"-1.74\" r=\"1\" fill=\"#6978b6\"/><circle cx=\"1.69\" cy=\"-1.07\" r=\"1\" fill=\"#d5c9a0\"/><circle cx=\"-1.04\" cy=\"3.86\" r=\"1\" fill=\"#a5afe3\"/><circle cx=\"-2.76\" cy=\"-5.33\" r=\"1\" fill=\"#6978b6\"/><circle cx=\"7.51\" cy=\"2.75\" r=\"1\" fill=\"#d5c9a0\"/><circle cx=\"-9.24\" cy=\"3.81\" r=\"1\" fill=\"#a5afe3\"/><circle cx=\"0.85\" cy=\"-1.81\" r=\"1\" fill=\"#6978b6\"/><circle cx=\"1.20\" cy=\"3.82\" r=\"1\" fill=\"#d5c9a0\"/><circle cx=\"-5.19\" cy=\"-3.01\" r=\"1\" fill=\"#a5afe3\"/><circle cx=\"7.81\" cy=\"-1.71\" r=\"1\" fill=\"#6978b6\"/><circle cx=\"-5.76\" cy=\"8.18\" r=\"1\" fill=\"#d5c9a0\"/><circle cx=\"-0.26\" cy=\"-1.98\" r=\"1\" fill=\"#a5afe3\"/><circle cx=\"3.06\" cy=\"2.58\" r=\"1\" fill=\"#6978b6\"/><circle cx=\"-6.00\" cy=\"0.24\" r=\"1\" fill=\"#d5c9a0\"/><circle cx=\"5.67\" cy=\"-5.64\" r=\"1\" fill=\"#a5afe3\"/><circle cx=\"-0.47\" cy=\"9.99\" r=\"1\" fill=\"#6978b6\"/><circle cx=\"-1.28\" cy=\"-1.54\" r=\"1\" fill=\"#d5c9a0\"/><circle cx=\"3.96\" cy=\"0.54\" r=\"1\" fill=\"#a5afe3\"/><circle cx=\"-4.93\" cy=\"3.42\" r=\"1\" fill=\"#6978b6\"/><circle cx=\"1.76\" cy=\"-7.80\" r=\"1\" fill=\"#d5c9a0\"/></g></g></g>" +
+        '<g id="corner" fill="none" stroke="url(#g)" stroke-linecap="round">' +
+          '<path d="M9 50 V9 H50" stroke-width=".8"/>' +
+          '<path d="M9 9 C22 9 30 16 28 25 C26 32 18 32 17 26 C16 22 20 20 22 22" stroke-width="1.6"/>' +
+          '<path d="M9 9 C9 22 16 30 25 28" stroke-width="1.2"/>' +
+          '<path d="M30 14 C38 10 46 12 50 18 C46 18 40 18 36 22" stroke-width="1.1"/>' +
+          '<path d="M14 30 C10 38 12 46 18 50 C18 46 18 40 22 36" stroke-width="1.1"/>' +
+          '<circle cx="50" cy="9" r="1.4" fill="#b4934a" stroke="none"/><circle cx="9" cy="50" r="1.4" fill="#b4934a" stroke="none"/><circle cx="22" cy="22" r="1.6" fill="#b4934a" stroke="none"/>' +
+        '</g>' +
+        '<g id="div" fill="none" stroke="url(#gl)" stroke-linecap="round">' +
+          '<path d="M6 11 H122 M198 11 H314" stroke-width=".9"/>' +
+          '<path d="M160 11 C150 2 136 2 134 9 C132 16 144 17 146 11 C148 6 140 5 139 9 M160 11 C170 2 184 2 186 9 C188 16 176 17 174 11 C172 6 180 5 181 9" stroke-width="1.3"/>' +
+          '<path d="M160 11 C154 16 148 20 140 19 M160 11 C166 16 172 20 180 19 M122 11 C126 8 130 8 132 11 M198 11 C194 8 190 8 188 11" stroke-width="1"/>' +
+          '<path d="M160 3 L164 11 L160 19 L156 11 Z" fill="#b4934a" stroke="none"/>' +
+          '<circle cx="4" cy="11" r="2" fill="#b4934a" stroke="none"/><circle cx="316" cy="11" r="2" fill="#b4934a" stroke="none"/>' +
+        '</g>' +
+      '</defs>' +
+      // paper
+      '<rect width="' + W + '" height="' + H + '" fill="#fbf7ef"/>' +
+      '<rect width="' + W + '" height="' + H + '" filter="url(#m)" opacity=".22"/>' +
+      '<rect width="' + W + '" height="' + H + '" fill="url(#w1)"/><rect width="' + W + '" height="' + H + '" fill="url(#w2)"/>' +
+      // borders + corners
+      '<rect x="34" y="34" width="' + (W - 68) + '" height="' + (H - 68) + '" fill="none" stroke="url(#g)" stroke-width="2.5"/>' +
+      '<rect x="48" y="48" width="' + (W - 96) + '" height="' + (H - 96) + '" fill="none" stroke="#d8c393" stroke-width="1"/>' +
+      '<use xlink:href="#corner" transform="translate(48 48) scale(2)"/>' +
+      '<use xlink:href="#corner" transform="translate(' + (W - 48) + ' 48) scale(-2 2)"/>' +
+      '<use xlink:href="#corner" transform="translate(48 ' + (H - 48) + ') scale(2 -2)"/>' +
+      '<use xlink:href="#corner" transform="translate(' + (W - 48) + ' ' + (H - 48) + ') scale(-2 -2)"/>' +
+      // divider under couple names
+      '<use xlink:href="#div" transform="translate(300 418) scale(1.5)"/>' +
+      // QR frame
+      '<rect x="' + QR.x + '" y="' + QR.y + '" width="' + QR.size + '" height="' + QR.size + '" rx="6" fill="#fffdf8" stroke="url(#g)" stroke-width="3"/>' +
+      '<rect x="' + (QR.x + 11) + '" y="' + (QR.y + 11) + '" width="' + (QR.size - 22) + '" height="' + (QR.size - 22) + '" fill="none" stroke="#d8c393" stroke-width="1"/>' +
+      diamond(QR.x + QR.size / 2, QR.y) + diamond(QR.x + QR.size / 2, QR.y + QR.size) +
+      diamond(QR.x, QR.y + QR.size / 2) + diamond(QR.x + QR.size, QR.y + QR.size / 2) +
+      // small divider under guest name
+      '<use xlink:href="#div" transform="translate(390 1262) scale(.9375)"/>' +
+      // cornflower accents
+      '<use xlink:href="#cornflower" transform="translate(222 1296) scale(.56) rotate(6)"/>' +
+      '<use xlink:href="#cornflower" transform="translate(858 1296) scale(.56) rotate(-6)"/>' +
+      '</svg>';
+  }
+  function diamond(cx, cy) {
+    return '<path d="M' + cx + ' ' + (cy - 11) + ' L' + (cx + 8) + ' ' + cy + ' L' + cx + ' ' + (cy + 11) + ' L' + (cx - 8) + ' ' + cy + ' Z" fill="url(#g)" stroke="#fffdf8" stroke-width="2"/>';
+  }
+
+  var artworkPromise = null;
+  function artwork() {
+    if (!artworkPromise) {
+      artworkPromise = new Promise(function (resolve, reject) {
+        var img = new Image();
+        img.onload = function () { resolve(img); };
+        img.onerror = reject;
+        img.src = 'data:image/svg+xml;charset=utf-8,' + encodeURIComponent(artworkSVG());
+      });
+    }
+    return artworkPromise;
+  }
+
+  /* ---------- text helpers ---------- */
+  function goldFill(ctx, x0, x1, y) {
+    var g = ctx.createLinearGradient(x0, y - 60, x1, y + 20);
+    g.addColorStop(0, '#8a6d33'); g.addColorStop(0.3, '#b4934a'); g.addColorStop(0.48, '#d9bf7e');
+    g.addColorStop(0.64, '#b4934a'); g.addColorStop(1, '#8a6d33');
+    return g;
+  }
+  function script(ctx, text, y, maxSize, maxWidth) {
+    var size = maxSize;
+    do {
+      ctx.font = size + 'px "Pinyon Script"';
+      var w = ctx.measureText(text).width;
+      if (w <= maxWidth) break;
+      size -= 2;
+    } while (size > 30);
+    ctx.fillStyle = goldFill(ctx, W / 2 - w / 2, W / 2 + w / 2, y);
+    ctx.textAlign = 'center';
+    ctx.fillText(text, W / 2, y);
+  }
+  function spaced(ctx, text, y, font, color, spacing) {
+    ctx.font = font;
+    ctx.fillStyle = color;
+    ctx.textAlign = 'left';
+    var chars = Array.from(text), widths = chars.map(function (c) { return ctx.measureText(c).width; });
+    var total = widths.reduce(function (a, b) { return a + b; }, 0) + spacing * (chars.length - 1);
+    var x = W / 2 - total / 2;
+    chars.forEach(function (c, i) { ctx.fillText(c, x, y); x += widths[i] + spacing; });
+  }
+
+  /* ---------- render one card ---------- */
+  function renderCard(name, art) {
+    var c = document.createElement('canvas');
+    c.width = W; c.height = H;
+    var ctx = c.getContext('2d');
+    ctx.drawImage(art, 0, 0);
+
+    script(ctx, 'You are cordially invited', 222, 104, 880);
+    spaced(ctx, 'TO THE WEDDING OF', 296, '500 26px "Cinzel"', '#6b6250', 7);
+    script(ctx, 'Woraphob & Christina', 392, 94, 860);
+    spaced(ctx, '12 . 11 . 2026   ·   SAINT PHILA HALL A', 500, '500 25px "Cinzel"', '#6b6250', 4);
+
+    // QR code
+    var qr = qrcode(0, 'M');
+    qr.addData(linkFor(name), 'Byte');
+    qr.make();
+    var n = qr.getModuleCount();
+    var inner = QR.size - 38;                    // leaves a quiet zone inside the frame
+    var m = Math.floor(inner / (n + 8));
+    var size = m * n;
+    var ox = Math.round(QR.x + (QR.size - size) / 2), oy = Math.round(QR.y + (QR.size - size) / 2);
+    ctx.fillStyle = "#fffdf8";
+    ctx.fillRect(ox - 4*m, oy - 4*m, size + 8*m, size + 8*m);
+    ctx.fillStyle = '#233557';
+    for (var r = 0; r < n; r++) for (var col = 0; col < n; col++) {
+      if (qr.isDark(r, col)) ctx.fillRect(ox + col * m, oy + r * m, m, m);
+    }
+
+    spaced(ctx, 'SCAN TO OPEN YOUR INVITATION', 1082, '500 20px "Cinzel"', '#8f7237', 5);
+    spaced(ctx, 'SPECIALLY FOR', 1150, '600 20px "Cinzel"', '#6b6250', 6);
+    script(ctx, name, 1236, 92, 780);
+    return c;
+  }
+
+  /* ---------- generate ---------- */
+  var results = [];
+  var grid = $('grid'), status = $('status'), zipBtn = $('zipBtn'), genBtn = $('genBtn');
+
+  function clearResults() {
+    results.forEach(function (r) { URL.revokeObjectURL(r.url); });
+    results = [];
+  }
+
+  genBtn.addEventListener('click', async function () {
+    var names = guestList();
+    if (!names.length) { status.textContent = 'Add at least one guest name first.'; return; }
+    genBtn.disabled = zipBtn.disabled = true;
+    clearResults();
+    grid.innerHTML = '';
+    status.textContent = 'Loading fonts…';
+    try {
+      await Promise.all([
+        document.fonts.load('100px "Pinyon Script"'),
+        document.fonts.load('500 26px "Cinzel"'),
+        document.fonts.load('600 26px "Cinzel"')
+      ]);
+      var art = await artwork();
+      var used = {};
+      for (var i = 0; i < names.length; i++) {
+        status.textContent = 'Creating card ' + (i + 1) + ' of ' + names.length + '…';
+        var name = names[i];
+        var canvas = renderCard(name, art);
+        var blob = await new Promise(function (res) { canvas.toBlob(res, 'image/png'); });
+        var base = slug(name), file = base, k = 2;
+        while (used[file]) file = base + '-' + k++;
+        used[file] = true;
+        var item = { name: name, link: linkFor(name), file: file + '.png', blob: blob, url: URL.createObjectURL(blob) };
+        results.push(item);
+        grid.appendChild(tile(item));
+        await new Promise(requestAnimationFrame);   // keep the page responsive
+      }
+      status.textContent = results.length + ' card' + (results.length > 1 ? 's' : '') + ' ready.' +
+        (/YOUR-USERNAME|YOUR-REPO/.test(baseInput.value) ? ' (Placeholder address — preview only.)' : '');
+      zipBtn.disabled = false;
+    } catch (err) {
+      console.error(err);
+      status.textContent = 'Something went wrong: ' + err.message;
+    }
+    genBtn.disabled = false;
+  });
+
+  function tile(item) {
+    var d = document.createElement('div');
+    d.className = 'item';
+    var img = document.createElement('img');
+    img.src = item.url;
+    img.alt = 'Invitation card for ' + item.name;
+    img.addEventListener('click', function () { $('zoomImg').src = item.url; $('zoomImg').alt = img.alt; $('zoom').showModal(); });
+    var nm = document.createElement('div');
+    nm.className = 'nm';
+    nm.textContent = item.name;
+    var acts = document.createElement('div');
+    acts.className = 'acts';
+    var dl = document.createElement('a');
+    dl.href = item.url; dl.download = item.file; dl.textContent = 'Download';
+    var open = document.createElement('a');
+    open.href = item.link; open.target = '_blank'; open.rel = 'noopener'; open.textContent = 'Test link';
+    var copy = document.createElement('button');
+    copy.type = 'button'; copy.textContent = 'Copy link';
+    copy.addEventListener('click', function () {
+      navigator.clipboard.writeText(item.link).then(function () {
+        copy.textContent = 'Copied'; setTimeout(function () { copy.textContent = 'Copy link'; }, 1400);
+      });
+    });
+    acts.append(dl, copy, open);
+    d.append(img, nm, acts);
+    return d;
+  }
+
+  zipBtn.addEventListener('click', async function () {
+    if (!results.length) return;
+    zipBtn.disabled = true;
+    status.textContent = 'Packing ZIP…';
+    var zip = new JSZip();
+    var csv = 'Name,Link,File\r\n' + results.map(function (r) {
+      return [r.name, r.link, r.file].map(function (v) { return '"' + v.replace(/"/g, '""') + '"'; }).join(',');
+    }).join('\r\n');
+    zip.file('guest-links.csv', '﻿' + csv);
+    results.forEach(function (r) { zip.file('cards/' + r.file, r.blob); });
+    var blob = await zip.generateAsync({ type: 'blob' });
+    var a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = 'wedding-invitation-cards.zip';
+    document.body.appendChild(a);
+    a.click();
+    setTimeout(function () { URL.revokeObjectURL(a.href); a.remove(); }, 2000);
+    status.textContent = 'ZIP downloaded — ' + results.length + ' cards + guest-links.csv.';
+    zipBtn.disabled = false;
+  });
+})();
+</script>
+</body>
+</html>
